@@ -28,10 +28,6 @@ HOMEWORK_VERDICTS = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
-RESPONSE_NOT_DICT = 'Ответ API не является словарем'
-HOMEWORKS_NOT_IN_RESPONSE = 'Отсутствует ключ homeworks'
-HOMEWORKS_NOT_LIST = 'Структура данных не соответсвует ожиданиям'
-
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
@@ -83,13 +79,13 @@ def get_api_answer(timestamp):
 
 def check_response(response):
     """Проверка полученных данных."""
-    if type(response) is not dict:
-        raise TypeError(RESPONSE_NOT_DICT)
+    if not isinstance(response, dict):
+        raise TypeError('Структура данных не является словарем')
     if 'homeworks' not in response:
-        raise TypeError(HOMEWORKS_NOT_IN_RESPONSE)
+        raise TypeError('Отсутствует ключ homeworks')
     homeworks = response['homeworks']
-    if type(homeworks) is not list:
-        raise TypeError(HOMEWORKS_NOT_LIST)
+    if not isinstance(homeworks, list):
+        raise TypeError('Структура данных не является списком')
     return response.get('homeworks')
 
 
