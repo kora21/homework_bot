@@ -6,10 +6,10 @@ import telegram
 import time
 
 from dotenv import load_dotenv
+from exceptions import ApiStatusError, ApiAnswerError
 from http import HTTPStatus
 from telegram import TelegramError
 
-from exceptions import ApiStatusError, ApiAnswerError
 
 load_dotenv()
 
@@ -45,11 +45,7 @@ logger.addHandler(log_handler)
 
 def check_tokens():
     """Проверяем доступность переменных окружения."""
-    tokens = (all)
-    for token, value in tokens.items():
-        if value is None:
-            logger.error(f'{token} not found')
-    return all(tokens.values())
+    return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def send_message(bot, message):
@@ -57,9 +53,10 @@ def send_message(bot, message):
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.debug(f'Сообщение отправлено: {message}')
-    except telegram.error.TelegramError as error:
+    except TelegramError as error:
         logger.error(f'Ошибка отправки сообщения: {error}')
-        raise TelegramError(f'Ошибка отправки сообщения: {error}')
+    else:
+        logger.debug(f'Сообщение отправлено: {message}')
 
 
 def get_api_answer(timestamp):
@@ -86,10 +83,10 @@ def get_api_answer(timestamp):
 
 def check_response(response):
     """Проверка полученных данных."""
-    if not isinstance(response['homeworks'], list):
+    if type(response) is not dict:
         raise TypeError(RESPONSE_NOT_DICT)
     if 'homeworks' not in response:
-        raise KeyError(HOMEWORKS_NOT_IN_RESPONSE)
+        raise TypeError(HOMEWORKS_NOT_IN_RESPONSE)
     homeworks = response['homeworks']
     if type(homeworks) is not list:
         raise TypeError(HOMEWORKS_NOT_LIST)
@@ -98,15 +95,15 @@ def check_response(response):
 
 def parse_status(homework):
     """Отправка статуса проверки."""
-    homework_name = homework["homework_name"]
-    homework_status = homework["status"]
-    if 'homework_name' not in homework:
-        raise KeyError
-    if 'status' not in homework:
-        raise KeyError
-    if homework_status not in HOMEWORK_VERDICTS or None:
-        raise Exception
-    verdict = HOMEWORK_VERDICTS[homework_status]
+    homework_name = homework.get('homework_name')
+    status = homework.get('status')
+    if homework_name is None:
+        raise KeyError('Нет ключа домашней работы')
+    if status is None:
+        raise KeyError('Отсудствует статус')
+    if status not in HOMEWORK_VERDICTS or None:
+        raise ValueError('Неверный статус домашней работы')
+    verdict = HOMEWORK_VERDICTS[status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -123,10 +120,14 @@ def main():
         try:
             response = get_api_answer(timestamp)
             timestamp = response.get('current_date', int(time.time()))
-            homeworks = check_response(response)
-            if homeworks:
-                send_message(bot, parse_status(homeworks[0]))
-            timestamp = response.get('current_date', timestamp)
+            homeworks_status = check_response(response)
+            if not homeworks_status:
+                send_message(bot, 'Изменений нет')
+                logger.debug('Изменений нет')
+            else:
+                new_message = parse_status(homeworks_status[0])
+                send_message(bot, f'статус домашней работы '
+                             f'обновлен - {new_message}')
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logger.error(message)
