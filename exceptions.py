@@ -14,3 +14,21 @@ class TokenError(Exception):
     """Ошибка токена."""
 
     pass
+
+
+class APIResponseStatusCodeException:
+    """Api не отвечает."""
+
+    pass
+
+
+class ApiStatusError:
+    """Неожидаемый ответ от Api."""
+
+    pass
+
+
+class ApiAnswerError:
+    """Неожидаемый ответ от Api."""
+
+    pass
